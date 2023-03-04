@@ -19,10 +19,9 @@ const params = {
   gradient2:  '#b26d6d',
   line:       '#000000'
 }
-
-
 let elCanvas;
 let points;
+
 
 const sketch = ({ canvas }) => {
   points = [
@@ -31,12 +30,11 @@ const sketch = ({ canvas }) => {
     new Point({ x: 800, y: 200 }),
     new Point({ x: 800, y: 800 }),
     new Point({ x: 200, y: 800 }),
-    new Point({ x: 200, y: 500 }),
+
   ];
 
   canvas.addEventListener('mousedown', onMouseDown );
   elCanvas = canvas;
-
 
   return ({ context, width, height }) => {
 
@@ -47,37 +45,53 @@ const sketch = ({ canvas }) => {
     context.fillRect(0, 0, width, height);
 
 
+    switch (parseInt(params.lineType)) {
+      case 1:
+        drawBezier(context);
+        break;
+      case 2:
+        drawHermite(context);
+        break;
 
-
-    context.strokeStyle = params.line;
-
-    context.beginPath();
-    context.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i++)    // Drawing helping lines
-      context.lineTo(points[i].x, points[i].y);
-    
-    context.stroke();
-
-    context.beginPath();
-
-    for (let i = 0; i < points.length - 1; i++) {
-      const curr = points[i];
-      const next = points[(i + 1) % points.length];
-      
-      const mx = curr.x + (next.x - curr.x) / 2;
-      const my = curr.y + (next.y - curr.y) / 2;
-                                    // Drawing curves
-      if ( i == 0 )                    context.moveTo(curr.x, curr.y);
-      else if (i == points.length - 2) context.quadraticCurveTo(curr.x, curr.y, next.x, next.y);
-      else                             context.quadraticCurveTo(curr.x, curr.y, mx, my);
-    }
-    context.lineWidth = 4;
-    context.fillStyle = 'blue';
-    context.stroke();
-
-    points.forEach(point => { point.draw(context); });    // Drawing points
+      default:
+        console.log('Error: wrong line type')
+        break;
+    }    
   };
 };
+
+const drawBezier = (context) => {
+
+  context.strokeStyle = params.line;
+  context.beginPath();
+  
+  context.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++)    // Drawing helping lines
+    context.lineTo(points[i].x, points[i].y);
+  
+  context.stroke();
+  context.beginPath();
+  for (let i = 0; i < points.length - 1; i++) {
+      const curr = points[i];
+    const next = points[(i + 1) % points.length];
+    
+    const mx = curr.x + (next.x - curr.x) / 2;
+    const my = curr.y + (next.y - curr.y) / 2;
+    // Drawing curves
+    if ( i == 0 )                    context.moveTo(curr.x, curr.y);
+    else if (i == points.length - 2) context.quadraticCurveTo(curr.x, curr.y, next.x, next.y);
+    else                             context.quadraticCurveTo(curr.x, curr.y, mx, my);
+}
+  context.lineWidth = 4;
+  context.stroke();
+  points.forEach(point => { point.draw(context); });    // Drawing points  
+}
+
+
+const drawHermite = (context) => {
+
+}
+
 
 onMouseDown = (e) => {
 
@@ -143,7 +157,7 @@ class Point {
 
     context.translate(this.x, this.y);
     context.beginPath();
-    context.arc(0, 0, 7, 0, Math.PI * 2);
+    context.arc(0, 0, 6, 0, Math.PI * 2);
 
     context.fillStyle = this.control ? 'red' : 'black';  
     context.fill();
