@@ -12,8 +12,7 @@ let params = {
   drawLines:  true,
   resolution: 0.001,
   gradient1:  '#2b928d',
-  gradient2:  '#c18484',
-  line:       '#000000'
+  gradient2:  '#c18484'
 }
 let elCanvas;
 let points;
@@ -42,7 +41,7 @@ const sketch = ({ canvas }) => {
     new Point({ x: 800, y: 800 }),    // P6 third pass point
     new Point({ x: 880, y: 850 }),    // P7 control point
 
-    new Point({ x: 1000, y: 300 }),    // P8 control point
+    new Point({ x: 1000, y: 300 }),   // P8 control point
     new Point({ x: 950, y: 250 }),    // P9 end point
   ];
   
@@ -204,7 +203,6 @@ function drawHermite(context) {
   Hpoints = [];
   Htangents = [];
   let j = 0, k = 0;
-
   for (let i = 0; i < HermitePoints.length; i++) {
     if (i % 2 == 0) {
       Hpoints[j] = [HermitePoints[i].x, HermitePoints[i].y];
@@ -214,16 +212,14 @@ function drawHermite(context) {
       k++;
     }
   }
-  if (j > k) 
-    Hpoints.pop();
-  
+  if (j > k)              Hpoints.pop();
   if (Hpoints.length < 2) return;
 
   context.beginPath();
   context.moveTo(Hpoints[0], Hpoints[1]);
   for (var t = 0; t < 1; t += params.resolution) {
     var point = hermite(t, Hpoints, Htangents);
-    var tangent = hermite(t, Hpoints, Htangents, null, true);
+    // var tangent = hermite(t, Hpoints, Htangents, null, true);
     context.lineTo(point[0], point[1]);
   }
   context.lineWidth = 4;
@@ -304,14 +300,16 @@ const createPane = () => {    // Control panel settings
   folder.addInput(params, 'resolution', { min: 0.0001, max: 0.5, step: 0.001 });
   folder.addInput(params, 'drawPoints');
   folder.addInput(params, 'drawLines');
+  folder.addButton({title: 'Convert B-Spline to Hermite'}).on('click', () => { 
+  });
+  folder.addButton({title: 'Convert Hermite to B-Spline'}).on('click', () => {
+  });
 
   folder = pane.addFolder({title:'Style'})
   folder.addInput(params, 'gradient1',  { picker: 'inline', expanded: false, });
   folder.addInput(params, 'gradient2',  { picker: 'inline', expanded: false, });
   // folder.addInput(params, 'line',       { picker: 'inline', expanded: false, });
 }
-
-
 
 createPane();
 canvasSketch(sketch, settings);
@@ -349,6 +347,12 @@ class Point {
   
   multiply(scalar) {
     return new Point({x: this.x * scalar, y: this.y * scalar});
+  }
+  divide(scalar) {
+    return new Point({x: this.x / scalar, y: this.y / scalar});
+  }
+  negate() {
+    return new Point({x: -this.x, y: -this.y});
   }
 
   givebackX() {
