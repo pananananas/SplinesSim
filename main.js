@@ -1,15 +1,6 @@
-// Curves intro: mouse interaction and drawing curves
-
 const canvasSketch = require('canvas-sketch');
-const math         = require('canvas-sketch-util/math');
-const random       = require('canvas-sketch-util/random');
-const color        = require('canvas-sketch-util/color');
 const Tweakpane    = require('tweakpane');
-const risoColors   = require('riso-colors');
-const pfive        = require('p5');
-const p5 = require('p5');
-
-
+const hermite        = require('cubic-hermite-spline');
 const settings = {
   dimensions: [ 1080, 1080 ],
 	animate: true
@@ -17,41 +8,63 @@ const settings = {
 
 let params = {
   lineType:   1,
+  drawPoints: true,
+  drawLines:  true,
+  resolution: 0.001,
   gradient1:  '#2b928d',
-  gradient2:  '#b26d6d',
+  gradient2:  '#c18484',
   line:       '#000000'
 }
 let elCanvas;
 let points;
-
+let BSplinePoints;
+let HermitePoints;
+let Hpoints;
+let Htangents;
 
 const sketch = ({ canvas }) => {
   points = [
     new Point({ x: 100, y: 600 }),    // P0 start point
-    new Point({ x: 140, y: 400 }),    // P1 control point
+    new Point({ x: 400, y: 300 }),    // P3 second pass point
+    new Point({ x: 800, y: 800 }),    // P6 third pass point
+    new Point({ x: 950, y: 250 }),    // P9 end point
+  ];
+
+  BSplinePoints = [
+    new Point({ x: 100, y: 600 }),    // P0 start point
+    new Point({ x: 125, y: 500 }),    // P1 control point
+
     new Point({ x: 300, y: 200 }),    // P2 control point
     new Point({ x: 400, y: 300 }),    // P3 second pass point
     new Point({ x: 500, y: 400 }),    // P4 control point
-    new Point({ x: 800, y: 200 }),    // P5 control point
+
+    new Point({ x: 720, y: 750 }),    // P5 control point
     new Point({ x: 800, y: 800 }),    // P6 third pass point
-    new Point({ x: 800, y: 200 }),    // P7 control point
-    new Point({ x: 800, y: 200 }),    // P8 control point
-    new Point({ x: 800, y: 1000 }),   // P9 end point
+    new Point({ x: 880, y: 850 }),    // P7 control point
+
+    new Point({ x: 1000, y: 300 }),    // P8 control point
+    new Point({ x: 950, y: 250 }),    // P9 end point
+  ];
+  
+  HermitePoints = [
+    new Point({ x: 100, y: 600 }),    // P0 start point
+    new Point({ x: 175, y: 300 }),    // P1 control point
+
+    new Point({ x: 400, y: 300 }),    // P2 second pass point
+    new Point({ x: 700, y: 600 }),    // P3 control point
+
+    new Point({ x: 800, y: 800 }),    // P4 third pass point
+    new Point({ x: 1040, y: 950 }),    // P5 control point
+
+    new Point({ x: 950, y: 250 }),    // P6 end point
+    new Point({ x: 800, y: 100 }),    // P7 control point
   ];
 
-  controlPoints = [
-    new Point({ x: 200, y: 500 }),
-    new Point({ x: 200, y: 200 }),
-  ];
+
   canvas.addEventListener('mousedown', onMouseDown );
   elCanvas = canvas;
-    
-  // params.lineType = 2;                // Delete me later
 
   return ({ context, width, height }) => {
-    pointsCubic = [];
-    for (let i = 0; i < points.length; i++)
-      if (i % 3 === 0) pointsCubic.push(points[i]);
 
     const fill = context.createLinearGradient(0, 0, width, height);   // Create gradient
     fill.addColorStop(0, params.gradient1);
@@ -61,13 +74,13 @@ const sketch = ({ canvas }) => {
 
     switch (parseInt(params.lineType)) {
       case 1:
-        drawCubicBezier(context);
-
+        drawQuadraticBezier(context);
         break;
+
       case 2:
-        // drawBezierSpline(context)
-
+         BezierSpline(context);
         break;
+
       case 3:
         drawHermite(context);
         break;
@@ -79,23 +92,26 @@ const sketch = ({ canvas }) => {
   };
 };
 
-function drawCubicBezier(context) {
-  const n = pointsCubic.length - 1;
-  context.beginPath();
-  context.moveTo(pointsCubic[0].x, pointsCubic[0].y);
+function drawQuadraticBezier(context) {
+  const n = points.length - 1;
+
+if (params.drawLines) {
+    context.beginPath();
+  context.moveTo(points[0].x, points[0].y);
   context.lineWidth = 2;
-
-  for (let i = 1; i < pointsCubic.length; i++)    // Drawing helping lines
-    context.lineTo(pointsCubic[i].x, pointsCubic[i].y);
+  for (let i = 1; i < points.length; i++)    // Drawing helping lines
+    context.lineTo(points[i].x, points[i].y);
   context.stroke();
+}
+  
 
   context.beginPath();
-  for (let t = 0; t <= 1; t += 0.01) {
+  for (let t = 0; t <= 1; t += params.resolution) {
     let x = 0;
     let y = 0;
     for (let i = 0; i <= n; i++) {
       const binomialCoeff = binomialCoefficient(n, i);
-      const point = pointsCubic[i];
+      const point = points[i];
       const bernsteinPolynomial = binomialCoeff * Math.pow(1 - t, n - i) * Math.pow(t, i);
       x += bernsteinPolynomial * point.x;
       y += bernsteinPolynomial * point.y;
@@ -104,7 +120,8 @@ function drawCubicBezier(context) {
   }
   context.lineWidth = 4;
   context.stroke();
-  pointsCubic.forEach(point => { point.draw(context); });    // Drawing points  
+
+  if (params.drawPoints)  points.forEach(point => { point.draw(context); });    // Drawing points  
 }
 
 function binomialCoefficient(n, k) {
@@ -114,151 +131,103 @@ function binomialCoefficient(n, k) {
   return result;
 }
 
-function drawBezierSpline(context) {
-  const n = controlPoints.length - 1;
-  const points = [];
+function BezierSpline(context) {
 
-  for (let i = 0; i < n; i++) {
-    const p0 = controlPoints[i];
-    const p3 = controlPoints[i + 1];
-
-    const m0 = i === 0 ? controlPoints[0].subtract(controlPoints[0]) : controlPoints[i].subtract(controlPoints[i - 1]);
-    const m1 = i === n - 1 ? controlPoints[n - 1].subtract(controlPoints[n - 2]) : controlPoints[i + 1].subtract(controlPoints[i]);
-
-    for (let t = 0; t <= 1; t += 0.01) {
-      const tMatrix = [t * t * t, t * t, t, 1];
-      const hermiteMatrix = [        
-        [2, -2, 1, 1],
-        [-3, 3, -2, -1],
-        [0, 0, 1, 0],
-        [1, 0, 0, 0],
-      ];
-      const x = dotProduct(dotProduct(tMatrix, hermiteMatrix), [p0.x, p3.x, m0.x, m1.x]);
-      const y = dotProduct(dotProduct(tMatrix, hermiteMatrix), [p0.y, p3.y, m0.y, m1.y]);
-      points.push(new Point({ x, y }));
-    }
+  // Drawing helping lines
+  if (params.drawLines) {
+    context.beginPath();
+    context.moveTo(BSplinePoints[0].x, BSplinePoints[0].y);
+    context.lineWidth = 2;
+    for (let i = 1; i < BSplinePoints.length; i++)   
+      if (i % 3 == 1 || i % 3 == 0)   context.lineTo(BSplinePoints[i].x, BSplinePoints[i].y);
+      else                            context.moveTo(BSplinePoints[i].x, BSplinePoints[i].y);
+    context.stroke();
   }
-
-  context.beginPath();
-  context.moveTo(controlPoints[0].x, controlPoints[0].y);
-  context.lineWidth = 2;
-
-  controlPoints.forEach(point => { point.draw(context); });
-
-  for (let i = 0; i < points.length; i++) {
-    const point = points[i];
-    context.lineTo(point.x, point.y);
+  if (params.drawPoints)  // Drawing points
+    for (let i = 0; i < BSplinePoints.length; i++) 
+      if (i % 3 == 0)   BSplinePoints[i].draw(context);
+      else              BSplinePoints[i].draw(context, 5);
+  
+  // Draw B-spline
+  for (let i = 0; i < BSplinePoints.length - 3; i += 3) {
+    const startPoint = [BSplinePoints[i].x, BSplinePoints[i].y];
+    const controlPoint1 = [BSplinePoints[i+1].x, BSplinePoints[i+1].y];
+    const controlPoint2 = [BSplinePoints[i+2].x, BSplinePoints[i+2].y];
+    const endPoint = [BSplinePoints[i+3].x, BSplinePoints[i+3].y];
+    drawCubicBezierCurve(context, startPoint, controlPoint1, controlPoint2, endPoint);
   }
-  context.stroke();
 }
 
-// function drawHermite(context) {
-//   const segments = points.length - 1;
-//   context.beginPath();
-//   context.moveTo(points[0].x, points[0].y);
-//   context.lineWidth = 2;
-
-//   for (let i = 1; i < points.length; i++)    // Drawing helping lines
-//     context.lineTo(points[i].x, points[i].y);
-//   context.stroke();
-
-
-//   context.beginPath();
-//   const curvePoints = [];
-
-//   // Calculate curve points
-//   for (let i = 0; i < segments; i++) {
-//     const p0 = points[i];
-//     const p1 = points[i + 1];
-//     const m0 = i > 0 ? points[i].subtract(points[i - 1]) : p1.subtract(p0);
-//     const m1 = i < segments - 1 ? points[i + 2].subtract(p0) : p1.subtract(p0);
-//     const curve = calculateHermiteCurve(p0, m0, p1, m1);
-//     curvePoints.push(...curve);
-//     // console.log(curve);
-//   }
-//   // console.log(curvePoints);
-//   // Draw curve
-//   context.beginPath();
-//   context.moveTo(curvePoints[0].x, curvePoints[0].y);
-//   for (let i = 1; i < curvePoints.length; i++) {
-//     context.lineTo(curvePoints[i].x, curvePoints[i].y);
-//   }
-//   context.lineWidth = 4;
-//   context.stroke();
-
-//   // Draw control points
-//   context.strokeStyle = 'black';
-//   context.setLineDash([5, 10]);
-//   context.beginPath();
-//   for (let i = 0; i < points.length - 1; i++) {
-//     context.moveTo(points[i].x, points[i].y);
-//     context.lineTo(points[i + 1].x, points[i + 1].y);
-//   }
-//   context.stroke();
-
-//   points.forEach(point => { point.draw(context); });    // Drawing points 
-// }
-
-function drawHermite(context) {
-  const segments = points.length - 1;
-  const curvePoints = [];
+function drawCubicBezierCurve(context, P0, P1, P2, P3) {
   context.beginPath();
-  context.moveTo(points[0].x, points[0].y);
-  context.lineWidth = 2;
-  for (let i = 1; i < points.length; i++)    // Drawing helping lines
-    context.lineTo(points[i].x, points[i].y);
-  context.stroke();
-
-  // Calculate curve points
-  for (let i = 0; i < segments; i++) {
-    const p0 = points[i];
-    const p1 = points[i + 1];
-    const m0 = i > 0 ? points[i].subtract(points[i - 1]) : p1.subtract(p0);
-    const m1 = i < segments - 1 ? points[i + 2].subtract(p0) : p1.subtract(p0);
-    const curve = calculateHermiteCurve(p0, m0, p1, m1, segments);
-    curvePoints.push(...curve);
-  }
-
-  // Draw curve
-  context.beginPath();
-  context.moveTo(curvePoints[0].x, curvePoints[0].y);
-  for (let i = 1; i < curvePoints.length; i++) 
-    context.lineTo(curvePoints[i].x, curvePoints[i].y);
+  context.moveTo(P0[0], P0[1]);
   
-  context.strokeStyle = params.line;
+  for (let t = 0; t <= 1; t += params.resolution) {
+    const point = getCubicBezierPoint(t, P0, P1, P2, P3);
+    context.lineTo(point[0], point[1]);
+  }
   context.lineWidth = 4;
   context.stroke();
-
-  // Draw points
-  points.forEach(point => { point.draw(context); });
 }
 
-function calculateHermiteCurve(p0, m0, p1, m1, segments) {
-  const hermiteMatrix = [
-    [2, -2, 1, 1],
-    [-3, 3, -2, -1],
-    [0, 0, 1, 0],
-    [1, 0, 0, 0],
-  ];
-  const points = [];
+function getCubicBezierPoint(t, P0, P1, P2, P3) {
+  const x =
+    Math.pow(1 - t, 3) * P0[0] +
+    3 * Math.pow(1 - t, 2) * t * P1[0] +
+    3 * (1 - t) * Math.pow(t, 2) * P2[0] +
+    Math.pow(t, 3) * P3[0];
+  const y =
+    Math.pow(1 - t, 3) * P0[1] +
+    3 * Math.pow(1 - t, 2) * t * P1[1] +
+    3 * (1 - t) * Math.pow(t, 2) * P2[1] +
+    Math.pow(t, 3) * P3[1];
+  return [x, y];
+}
 
-  for (let i = 0; i < segments; i++) {
-    const t = i / segments;
-    const tMatrix = [t * t * t, t * t, t, 1];
-    const x = dotProduct(dotProduct(tMatrix, hermiteMatrix), [p0.x, p1.x, m0.x, m1.x]);
-    const y = dotProduct(dotProduct(tMatrix, hermiteMatrix), [p0.y, p1.y, m0.y, m1.y]);
-    points.push(new Point({ x, y }));
+function drawHermite(context) { 
+
+  if (params.drawLines) {   // Drawing helping lines
+    context.beginPath();
+    context.moveTo(HermitePoints[0].x, HermitePoints[0].y);
+    context.lineWidth = 2;
+    for (let i = 1; i < HermitePoints.length; i++)   
+      if (i % 2 == 1)   context.lineTo(HermitePoints[i].x, HermitePoints[i].y);
+      else                            context.moveTo(HermitePoints[i].x, HermitePoints[i].y);
+    context.stroke();
   }
-  return points;
-}
+  
+  if (params.drawPoints)  // Drawing points
+    for (let i = 0; i < HermitePoints.length; i++) 
+      if (i % 2 == 0)   HermitePoints[i].draw(context);
+      else              HermitePoints[i].draw(context, 5);
+  
+  Hpoints = [];
+  Htangents = [];
+  let j = 0, k = 0;
 
-function dotProduct(a, b) {
-  a = Array.from(a);
-  return a.reduce((acc, val, i) => acc + val * b[i], 0);
-}
+  for (let i = 0; i < HermitePoints.length; i++) {
+    if (i % 2 == 0) {
+      Hpoints[j] = [HermitePoints[i].x, HermitePoints[i].y];
+      j++;
+    } else {
+      Htangents[k] = [HermitePoints[i].x - HermitePoints[i-1].x, HermitePoints[i].y - HermitePoints[i-1].y];
+      k++;
+    }
+  }
+  if (j > k) 
+    Hpoints.pop();
+  
+  if (Hpoints.length < 2) return;
 
-const subtract = (other) => {
-  return new Point({ x: this.x - other.x, y: this.y - other.y });
+  context.beginPath();
+  context.moveTo(Hpoints[0], Hpoints[1]);
+  for (var t = 0; t < 1; t += params.resolution) {
+    var point = hermite(t, Hpoints, Htangents);
+    var tangent = hermite(t, Hpoints, Htangents, null, true);
+    context.lineTo(point[0], point[1]);
+  }
+  context.lineWidth = 4;
+  context.stroke();
 }
 
 onMouseDown = (e) => {
@@ -276,21 +245,50 @@ onMouseDown = (e) => {
     if ( !hit && point.isDragging )   hit = true;
   });
 
-  if ( !hit ) {
+  BSplinePoints.forEach(point => {
+    point.isDragging = point.hitTest(x, y);
+    if ( !hit && point.isDragging )   hit = true;
+  });
+
+  HermitePoints.forEach(point => {
+    point.isDragging = point.hitTest(x, y);
+    if ( !hit && point.isDragging )   hit = true;
+  });
+
+  if ( !hit && params.lineType == 1 ) {
     points.push(new Point({ x, y }));
+  } else if ( !hit && params.lineType == 2 ) {
+    BSplinePoints.push(new Point({ x, y }));
+  } else if ( !hit && params.lineType == 3 ) {
+    HermitePoints.push(new Point({ x, y }));
   }
 };
-
 onMouseMove = (e) => {
   const x = (e.offsetX / elCanvas.offsetWidth)  * elCanvas.width;
   const y = (e.offsetY / elCanvas.offsetHeight) * elCanvas.height;
 
-  points.forEach(point => {
-    if (point.isDragging) {
-      point.x = x;
-      point.y = y;
-    }
-  });
+  if ( params.lineType == 1 ) {
+    points.forEach(point => {
+      if (point.isDragging) {
+        point.x = x;
+        point.y = y;
+      }
+    });
+  } else if ( params.lineType == 2 ) {
+    BSplinePoints.forEach(point => {
+      if (point.isDragging) {
+        point.x = x;
+        point.y = y;
+      }
+    });
+  } else if ( params.lineType == 3 ) {
+    HermitePoints.forEach(point => {
+      if (point.isDragging) {
+        point.x = x;
+        point.y = y;
+      }
+    });
+  }
 };
 onMouseUp = (e) => {
   window.removeEventListener('mousemove', onMouseMove);
@@ -301,14 +299,19 @@ const createPane = () => {    // Control panel settings
   const pane = new Tweakpane.Pane();
 
   folder = pane.addFolder({title:'Spline'})
-  folder.addButton({title: 'Delete All Points'}).on('click', () => { points = []; });
-  folder.addInput(params, 'lineType', { options: {'Cubic Bezier': '1','Bezier Spline': '2', Hermite: '3', 'Catmull-Rom': '4', 'B-Spline': '5' }});
+  folder.addButton({title: 'Delete All Points'}).on('click', () => { points = []; BSplinePoints = []; HermitePoints = [];});
+  folder.addInput(params, 'lineType', { options: {'Bezier': '1','B-Spline': '2', Hermite: '3'}});
+  folder.addInput(params, 'resolution', { min: 0.0001, max: 0.5, step: 0.001 });
+  folder.addInput(params, 'drawPoints');
+  folder.addInput(params, 'drawLines');
 
   folder = pane.addFolder({title:'Style'})
   folder.addInput(params, 'gradient1',  { picker: 'inline', expanded: false, });
   folder.addInput(params, 'gradient2',  { picker: 'inline', expanded: false, });
-  folder.addInput(params, 'line',       { picker: 'inline', expanded: false, });
+  // folder.addInput(params, 'line',       { picker: 'inline', expanded: false, });
 }
+
+
 
 createPane();
 canvasSketch(sketch, settings);
@@ -319,26 +322,39 @@ class Point {
     this.y = y;
     this.control = control;
   }
-  draw(context) {
+
+  draw(context, radius = 8) {
     context.save();
     context.translate(this.x, this.y);
     context.beginPath();
-    context.arc(0, 0, 6, 0, Math.PI * 2);
+    context.arc(0, 0, radius, 0, Math.PI * 2);
     context.fillStyle = this.control ? 'red' : 'black';  
     context.fill();
     context.restore();
   }
+
   hitTest(x, y) {
     const dx = this.x - x;
     const dy = this.y - y;
     return Math.sqrt(dx * dx + dy * dy) < 20;
   }
+
+  add(point) {
+    return new Point({x: this.x + point.x, y: this.y + point.y});
+  }
+  
   subtract(point) {
     return new Point({x: this.x - point.x, y: this.y - point.y});
   }
+  
+  multiply(scalar) {
+    return new Point({x: this.x * scalar, y: this.y * scalar});
+  }
+
   givebackX() {
     return this.x;
   }
+
   givebackY() {
     return this.y;
   }
