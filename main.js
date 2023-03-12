@@ -13,7 +13,8 @@ let params = {
   drawLines:  true,
   resolution: 0.001,
   gradient1:  '#2b928d',
-  gradient2:  '#c18484'
+  gradient2:  '#c18484',
+  lineColor:  '#000000'
 }
 let elCanvas;
 let points;
@@ -97,6 +98,7 @@ function drawQuadraticBezier(context) {
 
 if (params.drawLines) {
     context.beginPath();
+  context.strokeStyle = params.lineColor;
   context.moveTo(points[0].x, points[0].y);
   context.lineWidth = 2;
   for (let i = 1; i < points.length; i++)    // Drawing helping lines
@@ -117,6 +119,7 @@ if (params.drawLines) {
     }
     context.lineTo(x, y);
   }
+  context.strokeStyle = params.lineColor;
   context.lineWidth = 4;
   context.stroke();
 
@@ -137,6 +140,7 @@ function BezierSpline(context) {
     context.beginPath();
     context.moveTo(BSplinePoints[0].x, BSplinePoints[0].y);
     context.lineWidth = 2;
+    context.strokeStyle = params.lineColor;
     for (let i = 1; i < BSplinePoints.length; i++)   
       if (i % 3 == 1 || i % 3 == 0)   context.lineTo(BSplinePoints[i].x, BSplinePoints[i].y);
       else                            context.moveTo(BSplinePoints[i].x, BSplinePoints[i].y);
@@ -160,7 +164,7 @@ function BezierSpline(context) {
 function drawCubicBezierCurve(context, P0, P1, P2, P3) {
   context.beginPath();
   context.moveTo(P0[0], P0[1]);
-  
+  context.strokeStyle = params.lineColor;
   for (let t = 0; t <= 1; t += params.resolution) {
     const point = getCubicBezierPoint(t, P0, P1, P2, P3);
     context.lineTo(point[0], point[1]);
@@ -187,6 +191,7 @@ function drawHermite(context) {
 
   if (params.drawLines) {   // Drawing helping lines
     context.beginPath();
+    context.strokeStyle = params.lineColor;
     context.moveTo(HermitePoints[0].x, HermitePoints[0].y);
     context.lineWidth = 2;
     for (let i = 1; i < HermitePoints.length; i++)   
@@ -194,7 +199,7 @@ function drawHermite(context) {
       else                            context.moveTo(HermitePoints[i].x, HermitePoints[i].y);
     context.stroke();
   }
-  
+  context.strokeStyle = params.lineColor;
   if (params.drawPoints)  // Drawing points
     for (let i = 0; i < HermitePoints.length; i++) 
       if (i % 2 == 0)   HermitePoints[i].draw(context);
@@ -300,17 +305,13 @@ const createPane = () => {    // Control panel settings
   // folder.addInput(params, 'resolution', { min: 0.0001, max: 0.5, step: 0.001 });
   folder.addInput(params, 'drawPoints');
   folder.addInput(params, 'drawLines');
-  // folder.addButton({title: 'Convert B-Spline to Hermite'}).on('click', () => { 
-
-  // });
-  // folder.addButton({title: 'Convert Hermite to B-Spline'}).on('click', () => {
-
-  // });
+  // folder.addButton({title: 'Convert B-Spline to Hermite'}).on('click', () => { });
+  // folder.addButton({title: 'Convert Hermite to B-Spline'}).on('click', () => { });
 
   folder = pane.addFolder({title:'Style'})
   folder.addInput(params, 'gradient1',  { picker: 'inline', expanded: false, });
   folder.addInput(params, 'gradient2',  { picker: 'inline', expanded: false, });
-  // folder.addInput(params, 'line',       { picker: 'inline', expanded: false, });
+  folder.addInput(params, 'lineColor',  { picker: 'inline', expanded: false, });
 }
 
 createPane();
@@ -328,7 +329,8 @@ class Point {
     context.translate(this.x, this.y);
     context.beginPath();
     context.arc(0, 0, radius, 0, Math.PI * 2);
-    context.fillStyle = this.control ? 'red' : 'black';  
+    context.fillStyle   = params.lineColor;  
+    context.strokeStyle = params.lineColor;
     context.fill();
     context.restore();
   }
