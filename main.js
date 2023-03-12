@@ -1,13 +1,14 @@
 const canvasSketch = require('canvas-sketch');
 const Tweakpane    = require('tweakpane');
 const hermite        = require('cubic-hermite-spline');
+
 const settings = {
   dimensions: [ 1080, 1080 ],
 	animate: true
 };
 
 let params = {
-  lineType:   1,
+  splineType:   1,
   drawPoints: true,
   drawLines:  true,
   resolution: 0.001,
@@ -71,7 +72,7 @@ const sketch = ({ canvas }) => {
     context.fillStyle = fill;
     context.fillRect(0, 0, width, height);
 
-    switch (parseInt(params.lineType)) {
+    switch (parseInt(params.splineType)) {
       case 1:
         drawQuadraticBezier(context);
         break;
@@ -102,7 +103,6 @@ if (params.drawLines) {
     context.lineTo(points[i].x, points[i].y);
   context.stroke();
 }
-  
 
   context.beginPath();
   for (let t = 0; t <= 1; t += params.resolution) {
@@ -251,11 +251,11 @@ onMouseDown = (e) => {
     if ( !hit && point.isDragging )   hit = true;
   });
 
-  if ( !hit && params.lineType == 1 ) {
+  if ( !hit && params.splineType == 1 ) {
     points.push(new Point({ x, y }));
-  } else if ( !hit && params.lineType == 2 ) {
+  } else if ( !hit && params.splineType == 2 ) {
     BSplinePoints.push(new Point({ x, y }));
-  } else if ( !hit && params.lineType == 3 ) {
+  } else if ( !hit && params.splineType == 3 ) {
     HermitePoints.push(new Point({ x, y }));
   }
 };
@@ -263,21 +263,21 @@ onMouseMove = (e) => {
   const x = (e.offsetX / elCanvas.offsetWidth)  * elCanvas.width;
   const y = (e.offsetY / elCanvas.offsetHeight) * elCanvas.height;
 
-  if ( params.lineType == 1 ) {
+  if ( params.splineType == 1 ) {
     points.forEach(point => {
       if (point.isDragging) {
         point.x = x;
         point.y = y;
       }
     });
-  } else if ( params.lineType == 2 ) {
+  } else if ( params.splineType == 2 ) {
     BSplinePoints.forEach(point => {
       if (point.isDragging) {
         point.x = x;
         point.y = y;
       }
     });
-  } else if ( params.lineType == 3 ) {
+  } else if ( params.splineType == 3 ) {
     HermitePoints.forEach(point => {
       if (point.isDragging) {
         point.x = x;
@@ -296,14 +296,16 @@ const createPane = () => {    // Control panel settings
 
   folder = pane.addFolder({title:'Spline'})
   folder.addButton({title: 'Delete All Points'}).on('click', () => { points = []; BSplinePoints = []; HermitePoints = [];});
-  folder.addInput(params, 'lineType', { options: {'Bezier': '1','B-Spline': '2', Hermite: '3'}});
-  folder.addInput(params, 'resolution', { min: 0.0001, max: 0.5, step: 0.001 });
+  folder.addInput(params, 'splineType', { options: {'Bezier': '1','B-Spline': '2', Hermite: '3'}});
+  // folder.addInput(params, 'resolution', { min: 0.0001, max: 0.5, step: 0.001 });
   folder.addInput(params, 'drawPoints');
   folder.addInput(params, 'drawLines');
-  folder.addButton({title: 'Convert B-Spline to Hermite'}).on('click', () => { 
-  });
-  folder.addButton({title: 'Convert Hermite to B-Spline'}).on('click', () => {
-  });
+  // folder.addButton({title: 'Convert B-Spline to Hermite'}).on('click', () => { 
+
+  // });
+  // folder.addButton({title: 'Convert Hermite to B-Spline'}).on('click', () => {
+
+  // });
 
   folder = pane.addFolder({title:'Style'})
   folder.addInput(params, 'gradient1',  { picker: 'inline', expanded: false, });
