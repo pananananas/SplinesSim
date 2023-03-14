@@ -1,6 +1,6 @@
 const canvasSketch = require('canvas-sketch');
 const Tweakpane    = require('tweakpane');
-const hermite        = require('cubic-hermite-spline');
+const hermite      = require('cubic-hermite-spline');
 
 const settings = {
   dimensions: [ 1080, 1080 ],
@@ -12,7 +12,7 @@ let params = {
   drawPoints: true,
   drawLines:  true,
   resolution: 0.001,
-  gradient1:  '#2b928d',
+  gradient1:  '#18709f',
   gradient2:  '#c18484',
   lineColor:  '#000000'
 }
@@ -79,7 +79,7 @@ const sketch = ({ canvas }) => {
         break;
 
       case 2:
-         BezierSpline(context);
+        drawCubicBezier(context);
         break;
 
       case 3:
@@ -133,7 +133,8 @@ function binomialCoefficient(n, k) {
   return result;
 }
 
-function BezierSpline(context) {
+
+function drawCubicBezier(context) {
 
   // Drawing helping lines
   if (params.drawLines) {
@@ -157,11 +158,11 @@ function BezierSpline(context) {
     const controlPoint1 = [BSplinePoints[i+1].x, BSplinePoints[i+1].y];
     const controlPoint2 = [BSplinePoints[i+2].x, BSplinePoints[i+2].y];
     const endPoint = [BSplinePoints[i+3].x, BSplinePoints[i+3].y];
-    drawCubicBezierCurve(context, startPoint, controlPoint1, controlPoint2, endPoint);
+    calcCubicBezierCurve(context, startPoint, controlPoint1, controlPoint2, endPoint);
   }
 }
 
-function drawCubicBezierCurve(context, P0, P1, P2, P3) {
+function calcCubicBezierCurve(context, P0, P1, P2, P3) {
   context.beginPath();
   context.moveTo(P0[0], P0[1]);
   context.strokeStyle = params.lineColor;
@@ -239,6 +240,8 @@ onMouseDown = (e) => {
   const x = (e.offsetX / elCanvas.offsetWidth)  * elCanvas.width;
   const y = (e.offsetY / elCanvas.offsetHeight) * elCanvas.height;
 
+  console.log(x, y);
+
   let hit = false;
 
   points.forEach(point => {
@@ -264,6 +267,7 @@ onMouseDown = (e) => {
     HermitePoints.push(new Point({ x, y }));
   }
 };
+
 onMouseMove = (e) => {
   const x = (e.offsetX / elCanvas.offsetWidth)  * elCanvas.width;
   const y = (e.offsetY / elCanvas.offsetHeight) * elCanvas.height;
@@ -291,6 +295,7 @@ onMouseMove = (e) => {
     });
   }
 };
+
 onMouseUp = (e) => {
   window.removeEventListener('mousemove', onMouseMove);
   window.removeEventListener('mouseup',   onMouseUp);
@@ -300,13 +305,49 @@ const createPane = () => {    // Control panel settings
   const pane = new Tweakpane.Pane();
 
   folder = pane.addFolder({title:'Spline'})
+  folder.addButton({title: 'Ctrl - Z'}).on('click', () => {
+  switch (parseInt(params.splineType)) {
+    case 1:
+      points.pop();
+      break;
+    case 2:
+      BSplinePoints.pop();
+      break;
+    case 3:
+      HermitePoints.pop();
+      break;
+  }    
+  });
   folder.addButton({title: 'Delete All Points'}).on('click', () => { points = []; BSplinePoints = []; HermitePoints = [];});
-  folder.addInput(params, 'splineType', { options: {'Bezier': '1','B-Spline': '2', Hermite: '3'}});
+  folder.addInput(params, 'splineType', { options: {'Quad Bezier': '1','Cubic Bezier': '2', Hermite: '3'}});
   // folder.addInput(params, 'resolution', { min: 0.0001, max: 0.5, step: 0.001 });
   folder.addInput(params, 'drawPoints');
   folder.addInput(params, 'drawLines');
-  // folder.addButton({title: 'Convert B-Spline to Hermite'}).on('click', () => { });
-  // folder.addButton({title: 'Convert Hermite to B-Spline'}).on('click', () => { });
+  folder = pane.addFolder({title:'Draw shapes'})
+    folder.addButton({title: 'Draw Heart (Cubic B)'}).on('click', () => { 
+
+    params.splineType = 2;
+    BSplinePoints = [
+    new Point({ x: 540, y: 800 }),    // P0 start point
+    new Point({ x: 440, y: 600 }),    // P1 control point
+
+    new Point({ x: 340, y: 600 }),    // P2 control point
+    new Point({ x: 300, y: 500 }),    // P3 second pass point
+    new Point({ x: 220, y: 300 }),    // P4 control point
+
+    new Point({ x: 440, y: 160 }),    // P5 control point
+    new Point({ x: 540, y: 400 }),    // P6 third pass point
+    new Point({ x: 640, y: 160 }),    // P7 control point
+
+    new Point({ x: 880, y: 300 }),   // P8 control point
+    new Point({ x: 780, y: 500 }),    // P9 end point
+    new Point({ x: 740, y: 600 }),   // P10 control point
+
+    new Point({ x: 640, y: 600 }),    // P11 control point
+    new Point({ x: 540, y: 800 }),    // P12 third pass point
+  ];
+  });
+
 
   folder = pane.addFolder({title:'Style'})
   folder.addInput(params, 'gradient1',  { picker: 'inline', expanded: false, });
@@ -323,7 +364,6 @@ class Point {
     this.y = y;
     this.control = control;
   }
-
   draw(context, radius = 8) {
     context.save();
     context.translate(this.x, this.y);
@@ -334,21 +374,17 @@ class Point {
     context.fill();
     context.restore();
   }
-
   hitTest(x, y) {
     const dx = this.x - x;
     const dy = this.y - y;
     return Math.sqrt(dx * dx + dy * dy) < 20;
   }
-
   add(point) {
     return new Point({x: this.x + point.x, y: this.y + point.y});
   }
-  
   subtract(point) {
     return new Point({x: this.x - point.x, y: this.y - point.y});
   }
-  
   multiply(scalar) {
     return new Point({x: this.x * scalar, y: this.y * scalar});
   }
@@ -358,11 +394,9 @@ class Point {
   negate() {
     return new Point({x: -this.x, y: -this.y});
   }
-
   givebackX() {
     return this.x;
   }
-
   givebackY() {
     return this.y;
   }
